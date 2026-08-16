@@ -30,7 +30,7 @@ static RTN_TYPE RUNTIME_API ImGuiBegin(RUNTIME_CONTEXT ctx) {
             data->SetData(label, 0, isOpen);
         }
     };
-    data->m_ImGuiData.m_nLastScriptCallMS = time(NULL);
+    data->m_ImGuiData.m_nLastScriptCallMS = (long long)GetTickCount64();
     wSetIntParam(ctx, data->GetData(label, 0, true));
     return RTN_CONTINUE;
 }
@@ -972,6 +972,8 @@ static RTN_TYPE RUNTIME_API ImGuiBeginFrame(RUNTIME_CONTEXT ctx) {
 static RTN_TYPE RUNTIME_API ImGuiEndFrame(RUNTIME_CONTEXT ctx) {
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData.m_bIsBackBufferReady = true;
+    // any completed frame counts as alive, windowless drawlist-only ones too
+    data->m_ImGuiData.m_nLastScriptCallMS = (long long)GetTickCount64();
     ScriptExData::SetCurrentScript("");
 
     return RTN_CONTINUE;
@@ -1284,7 +1286,9 @@ static RTN_TYPE RUNTIME_API ImGuiDrawListAddText(RUNTIME_CONTEXT ctx) {
     int a = (int)wGetIntParam(ctx);
 
     char text[RUNTIME_STR_LEN];
-    wGetStringWithFrame(ctx, text, RUNTIME_STR_LEN);
+    // Raw string: WithFrame appends "##frameid", which widgets hide but
+    // drawlist text renders literally on screen.
+    wGetStringParam(ctx, text, RUNTIME_STR_LEN);
 
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
@@ -1320,6 +1324,32 @@ static RTN_TYPE RUNTIME_API ImGuiDrawListAddLine(RUNTIME_CONTEXT ctx) {
         }
     };
 
+    return RTN_CONTINUE;
+}
+
+static RTN_TYPE RUNTIME_API ImGuiDrawListAddImageQuad(RUNTIME_CONTEXT ctx) {
+    ImDrawList *pDrawList = reinterpret_cast<ImDrawList*>(wGetIntParam(ctx));
+    TextureInfo *pInfo = reinterpret_cast<TextureInfo*>(wGetIntParam(ctx));
+    ImVec2 p1, p2, p3, p4;
+    p1.x = wGetFloatParam(ctx); p1.y = wGetFloatParam(ctx);
+    p2.x = wGetFloatParam(ctx); p2.y = wGetFloatParam(ctx);
+    p3.x = wGetFloatParam(ctx); p3.y = wGetFloatParam(ctx);
+    p4.x = wGetFloatParam(ctx); p4.y = wGetFloatParam(ctx);
+    int a = (int)wGetIntParam(ctx);
+
+    // same lazy-load rule as ImageButton
+    if (pInfo && !pInfo->pTexture && TextureMgr::Exists(pInfo)) {
+        TextureMgr::LoadTexture(*pInfo);
+    }
+
+    ScriptExData* data = ScriptExData::Get();
+    data->m_ImGuiData += [=]() {
+        if (pDrawList && pInfo && pInfo->pTexture) {
+            pDrawList->AddImageQuad(pInfo->pTexture, p1, p2, p3, p4,
+                ImVec2(0, 0), ImVec2(1, 0), ImVec2(1, 1), ImVec2(0, 1),
+                IM_COL32(255, 255, 255, a));
+        }
+    };
     return RTN_CONTINUE;
 }
 
@@ -1446,6 +1476,7 @@ void OpcodeMgr::RegisterCommands() {
     wRegisterCommand("IMGUI_GET_WINDOW_DRAWLIST", ImGuiGetWindowDrawList);
     wRegisterCommand("IMGUI_DRAWLIST_ADD_TEXT", ImGuiDrawListAddText);
     wRegisterCommand("IMGUI_DRAWLIST_ADD_LINE", ImGuiDrawListAddLine);
+    wRegisterCommand("IMGUI_DRAWLIST_ADD_IMAGE_QUAD", ImGuiDrawListAddImageQuad);
 
     wRegisterCommand("GET_FRAMERATE", ImGuiGetFramerate);
     wRegisterCommand("IMGUI_GET_VERSION", ImGuiGetVersion);
