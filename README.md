@@ -32,6 +32,8 @@ Below version of DirectX games are supported,
 3. D3D11
 4. OpenGL3 (Soon)
 
+Update: To trigger the build
+
 ### Installation 
 1. Install your required version of [ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) & [ImGuiRedux](https://github.com/user-grinch/ImGuiRedux/releases/) (x86 or x64)
 2. Cross your fingers and try it in game!
