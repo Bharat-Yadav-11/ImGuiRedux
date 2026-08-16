@@ -105,7 +105,10 @@ void TextureMgr::FreeTexture(TextureInfo *pInfo) {
         reinterpret_cast<ID3D11ShaderResourceView*>(pInfo->pTexture)->Release();
     }
 
-    std::remove(textureList.begin(), textureList.end(), *pInfo);
+    // copy first: pInfo points INTO the list, and list::remove erasing the
+    // element its own argument references is unspecified behaviour
+    TextureInfo target = *pInfo;
+    textureList.remove(target);   // std::remove alone never erased anything
 }
 
 TextureInfo* TextureMgr::FindInfo(std::string &&path) {
