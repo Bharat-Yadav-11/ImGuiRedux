@@ -1,5 +1,6 @@
 #pragma once
 #include "pch.h"
+#include <list>
 
 struct TextureInfo {
   public:
@@ -19,7 +20,10 @@ struct TextureInfo {
 class TextureMgr {
   private:
     // static inline constexpr unsigned int TIMEOUT = 30; // Unload unused textures
-    static inline std::vector<TextureInfo> textureList;
+    // std::list: element addresses are stable. A vector reallocates when it
+    // grows, invalidating every TextureInfo* already handed out as a script
+    // handle (crash on loading a second image - github issue #25).
+    static inline std::list<TextureInfo> textureList;
 
   public:
     TextureMgr() = delete;
