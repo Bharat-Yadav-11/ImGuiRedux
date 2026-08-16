@@ -2,6 +2,15 @@
 #include "pch.h"
 #include "texturemgr.h"
 #include "stb_image.h"
+#include "wrapper.hpp"
+#include <cstdio>
+
+// Diagnostic logging into cleo_redux.log - texture failures used to be silent
+static void TexLog(const char* fmt, const char* a, long long n) {
+    char buf[512];
+    std::snprintf(buf, sizeof(buf), fmt, a, n);
+    wLog(buf);
+}
 
 // d3dx9.h
 extern "C"
@@ -32,8 +41,11 @@ static bool D3D11CreateTextureFromFile(ID3D11Device* pDevice, const char* filena
     int height = 0;
     unsigned char* data = stbi_load(filename, &width, &height, NULL, 4);
     if (data == NULL) {
+        TexLog("ImGuiRedux: stbi_load FAILED for '%s' (%lld)", filename, 0);
         return false;
     }
+    TexLog("ImGuiRedux: stbi_load ok '%s' w*h=%lld", filename,
+           (long long)width * 10000 + height);
 
     // Create texture
     D3D11_TEXTURE2D_DESC desc;
@@ -54,7 +66,12 @@ static bool D3D11CreateTextureFromFile(ID3D11Device* pDevice, const char* filena
     subResource.SysMemPitch = desc.Width * 4;
     subResource.SysMemSlicePitch = 0;
 
-    pDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+    HRESULT hrTex = pDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+    if (FAILED(hrTex) || !pTexture) {
+        TexLog("ImGuiRedux: CreateTexture2D FAILED for '%s' hr=%lld", filename, (long long)hrTex);
+        stbi_image_free(data);
+        return false;
+    }
 
     // Create texture view
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -63,15 +80,21 @@ static bool D3D11CreateTextureFromFile(ID3D11Device* pDevice, const char* filena
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = desc.MipLevels;
     srvDesc.Texture2D.MostDetailedMip = 0;
-    pDevice->CreateShaderResourceView(pTexture, &srvDesc, outSrc);
-
+    HRESULT hrSrv = pDevice->CreateShaderResourceView(pTexture, &srvDesc, outSrc);
+    pTexture->Release();
     stbi_image_free(data);
-
+    if (FAILED(hrSrv) || !*outSrc) {
+        TexLog("ImGuiRedux: CreateSRV FAILED for '%s' hr=%lld", filename, (long long)hrSrv);
+        return false;
+    }
+    TexLog("ImGuiRedux: texture READY '%s' (%lld)", filename, 1);
     return true;
 }
 
 void TextureMgr::LoadTexture(TextureInfo &info) {
     if (!gD3DDevice) {
+        TexLog("ImGuiRedux: LoadTexture '%s' skipped - no device yet (%lld)",
+               info.path.c_str(), 0);
         return;
     }
 
