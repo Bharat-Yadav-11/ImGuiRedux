@@ -246,8 +246,19 @@ HRESULT Hook::hkResizeBuffers(IDXGISwapChain* pSwapChain, UINT a, UINT b, UINT c
     HRESULT hr = oResizeBuffers(pSwapChain, a, b, c, d, e);
     ID3D11Texture2D* back_buffer{};
     pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&back_buffer);
-    reinterpret_cast<ID3D11Device*>(pSwapChain)->CreateRenderTargetView(back_buffer, nullptr, &pRenderTargetView);
-    back_buffer->Release();
+    // BUGFIX: upstream cast the SWAPCHAIN to ID3D11Device and called
+    // CreateRenderTargetView on it - undefined behaviour that leaves the
+    // overlay dead after any resize (alt-tab). Ask the swapchain for its
+    // actual device instead.
+    if (back_buffer) {
+        ID3D11Device* dev = nullptr;
+        pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&dev);
+        if (dev) {
+            dev->CreateRenderTargetView(back_buffer, nullptr, &pRenderTargetView);
+            dev->Release();
+        }
+        back_buffer->Release();
+    }
     return hr;
 }
 
