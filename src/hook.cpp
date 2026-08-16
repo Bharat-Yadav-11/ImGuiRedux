@@ -161,8 +161,25 @@ void Hook::ProcessFrame(void* ptr) {
         if (gRenderer == eRenderer::Dx9) {
             ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
         } else if (gRenderer == eRenderer::Dx11) {
-            pDeviceContext->OMSetRenderTargets(1, &pRenderTargetView, NULL);
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            if (!pRenderTargetView && ptr) {
+                // rebuild the render target after a resize dropped it
+                IDXGISwapChain* sc = reinterpret_cast<IDXGISwapChain*>(ptr);
+                ID3D11Texture2D* bb = nullptr;
+                sc->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&bb);
+                if (bb) {
+                    ID3D11Device* dev = nullptr;
+                    sc->GetDevice(__uuidof(ID3D11Device), (void**)&dev);
+                    if (dev) {
+                        dev->CreateRenderTargetView(bb, nullptr, &pRenderTargetView);
+                        dev->Release();
+                    }
+                    bb->Release();
+                }
+            }
+            if (pRenderTargetView) {
+                pDeviceContext->OMSetRenderTargets(1, &pRenderTargetView, NULL);
+                ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            }
         }
     } else {
         if (!ImGui::GetCurrentContext()) {
@@ -243,23 +260,12 @@ HRESULT Hook::hkResizeBuffers(IDXGISwapChain* pSwapChain, UINT a, UINT b, UINT c
         pDeviceContext->Flush();
     }
 
-    HRESULT hr = oResizeBuffers(pSwapChain, a, b, c, d, e);
-    ID3D11Texture2D* back_buffer{};
-    pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&back_buffer);
-    // BUGFIX: upstream cast the SWAPCHAIN to ID3D11Device and called
-    // CreateRenderTargetView on it - undefined behaviour that leaves the
-    // overlay dead after any resize (alt-tab). Ask the swapchain for its
-    // actual device instead.
-    if (back_buffer) {
-        ID3D11Device* dev = nullptr;
-        pSwapChain->GetDevice(__uuidof(ID3D11Device), (void**)&dev);
-        if (dev) {
-            dev->CreateRenderTargetView(back_buffer, nullptr, &pRenderTargetView);
-            dev->Release();
-        }
-        back_buffer->Release();
-    }
-    return hr;
+    // Release-only inside the resize window: fullscreen transitions call
+    // ResizeBuffers repeatedly, and any live view we hold on a back buffer
+    // makes the game's own call fail with DXGI_ERROR_INVALID_CALL (UE4 then
+    // hard-crashes). The render target is recreated lazily in ProcessFrame
+    // on the next presented frame instead.
+    return oResizeBuffers(pSwapChain, a, b, c, d, e);
 }
 
 bool Hook::hkGlSwapBuffer(HDC unnamedParam1, UINT unnamedParam2) {
