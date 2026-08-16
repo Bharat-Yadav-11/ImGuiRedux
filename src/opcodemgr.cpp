@@ -121,7 +121,7 @@ static RTN_TYPE RUNTIME_API ImGuiLoadImage(RUNTIME_CONTEXT ctx) {
     char fullPath[RUNTIME_STR_LEN*2], path[RUNTIME_STR_LEN];
     wGetStringParam(ctx, path, RUNTIME_STR_LEN);
     wResolvePath(ctx, path, fullPath, sizeof(fullPath));
-    wSetIntParam(ctx, reinterpret_cast<int>(TextureMgr::LoadTextureFromPath(fullPath)));
+    wSetIntParam(ctx, reinterpret_cast<intptr_t>(TextureMgr::LoadTextureFromPath(fullPath)));
     return RTN_CONTINUE;
 }
 
@@ -1240,10 +1240,10 @@ static RTN_TYPE RUNTIME_API ImGuiGetWindowDrawList(RUNTIME_CONTEXT ctx) {
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
         ImDrawList *drawList = ImGui::GetWindowDrawList();
-        data->SetData("__WindowDrawlist__", 0, reinterpret_cast<int>(drawList));
+        data->SetData("__WindowDrawlist__", 0, reinterpret_cast<intptr_t>(drawList));
     };
 
-    wSetIntParam(ctx, data->GetData("__WindowDrawlist__", 0, 0));
+    wSetIntParam(ctx, data->GetData("__WindowDrawlist__", 0, intptr_t(0)));
     return RTN_CONTINUE;
 }
 
@@ -1251,10 +1251,10 @@ static RTN_TYPE RUNTIME_API ImGuiGetBackgroundDrawList(RUNTIME_CONTEXT ctx) {
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
         ImDrawList *drawList = ImGui::GetBackgroundDrawList();
-        data->SetData("__BackgroundDrawlist__", 0, reinterpret_cast<int>(drawList));
+        data->SetData("__BackgroundDrawlist__", 0, reinterpret_cast<intptr_t>(drawList));
     };
 
-    wSetIntParam(ctx, data->GetData("__BackgroundDrawlist__", 0, 0));
+    wSetIntParam(ctx, data->GetData("__BackgroundDrawlist__", 0, intptr_t(0)));
     return RTN_CONTINUE;
 }
 
@@ -1262,10 +1262,10 @@ static RTN_TYPE RUNTIME_API ImGuiGetForegroundDrawList(RUNTIME_CONTEXT ctx) {
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
         ImDrawList *drawList = ImGui::GetForegroundDrawList();
-        data->SetData("__ForegroundDrawlist__", 0, reinterpret_cast<int>(drawList));
+        data->SetData("__ForegroundDrawlist__", 0, reinterpret_cast<intptr_t>(drawList));
     };
 
-    wSetIntParam(ctx, data->GetData("__ForegroundDrawlist__", 0, 0));
+    wSetIntParam(ctx, data->GetData("__ForegroundDrawlist__", 0, intptr_t(0)));
     return RTN_CONTINUE;
 }
 
