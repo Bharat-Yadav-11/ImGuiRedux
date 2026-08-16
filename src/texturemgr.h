@@ -9,7 +9,7 @@ struct TextureInfo {
     unsigned int lastAccessed; // last time when the texture was accessed (seconds)
 
     TextureInfo() {};
-    bool operator==(const TextureInfo &pInfo) {
+    bool operator==(const TextureInfo &pInfo) const {
         return (path == pInfo.path && pInfo.pTexture && pTexture == pInfo.pTexture);
     }
 };
