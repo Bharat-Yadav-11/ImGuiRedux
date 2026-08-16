@@ -31,7 +31,9 @@ public:
     
     // for ImGui::ImageButton()
     ImVec4 m_vecImgTint = ImVec4(1, 1, 1, 1);
-    ImVec4 m_vecImgBgCol = ImVec4(1, 1, 1, 1);
+    ImVec4 m_vecImgBgCol = ImVec4(0, 0, 0, 0);   // was white - painted a
+                                                 // solid square behind
+                                                 // every transparent PNG
 
     // Fonts
     std::vector<std::pair<size_t, size_t>> m_FontGlyphRange;
