@@ -1271,15 +1271,17 @@ static RTN_TYPE RUNTIME_API ImGuiGetForegroundDrawList(RUNTIME_CONTEXT ctx) {
 
 static RTN_TYPE RUNTIME_API ImGuiDrawListAddText(RUNTIME_CONTEXT ctx) {
     ImVec2 pos;
-    ImVec4 col;
     ImDrawList *pDrawList = reinterpret_cast<ImDrawList*>(wGetIntParam(ctx));
     pos.x = wGetFloatParam(ctx);
     pos.y = wGetFloatParam(ctx);
 
-    col.x = wGetIntParam(ctx) / 255.0f;
-    col.y = wGetIntParam(ctx) / 255.0f;
-    col.z = wGetIntParam(ctx) / 255.0f;
-    col.w = wGetIntParam(ctx) / 255.0f;
+    // BUGFIX: IM_COL32 takes 0-255 ints. Upstream divided the params down to
+    // 0-1 floats first, so IM_COL32 truncated them to ~1/255 - every drawlist
+    // text rendered at 0.4% opacity, i.e. invisible.
+    int r = (int)wGetIntParam(ctx);
+    int g = (int)wGetIntParam(ctx);
+    int b = (int)wGetIntParam(ctx);
+    int a = (int)wGetIntParam(ctx);
 
     char text[RUNTIME_STR_LEN];
     wGetStringWithFrame(ctx, text, RUNTIME_STR_LEN);
@@ -1287,7 +1289,7 @@ static RTN_TYPE RUNTIME_API ImGuiDrawListAddText(RUNTIME_CONTEXT ctx) {
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
         if (pDrawList) {
-            pDrawList->AddText(pos, IM_COL32(col.x, col.y, col.z, col.w), text);
+            pDrawList->AddText(pos, IM_COL32(r, g, b, a), text);
         }
     };
 
@@ -1296,24 +1298,25 @@ static RTN_TYPE RUNTIME_API ImGuiDrawListAddText(RUNTIME_CONTEXT ctx) {
 
 static RTN_TYPE RUNTIME_API ImGuiDrawListAddLine(RUNTIME_CONTEXT ctx) {
     ImVec2 p1, p2;
-    ImVec4 col;
     ImDrawList *pDrawList = reinterpret_cast<ImDrawList*>(wGetIntParam(ctx));
     p1.x = wGetFloatParam(ctx);
     p1.y = wGetFloatParam(ctx);
     p2.x = wGetFloatParam(ctx);
     p2.y = wGetFloatParam(ctx);
 
-    col.x = wGetIntParam(ctx) / 255.0f;
-    col.y = wGetIntParam(ctx) / 255.0f;
-    col.z = wGetIntParam(ctx) / 255.0f;
-    col.w = wGetIntParam(ctx) / 255.0f;
+    // BUGFIX: same 0-1 float vs IM_COL32 int mismatch as AddText - all
+    // drawlist lines were invisible (alpha ~1/255).
+    int r = (int)wGetIntParam(ctx);
+    int g = (int)wGetIntParam(ctx);
+    int b = (int)wGetIntParam(ctx);
+    int a = (int)wGetIntParam(ctx);
 
     float thickness = wGetFloatParam(ctx);
 
     ScriptExData* data = ScriptExData::Get();
     data->m_ImGuiData += [=]() {
         if (pDrawList) {
-            pDrawList->AddLine(p1, p2, IM_COL32(col.x, col.y, col.z, col.w), thickness);
+            pDrawList->AddLine(p1, p2, IM_COL32(r, g, b, a), thickness);
         }
     };
 
