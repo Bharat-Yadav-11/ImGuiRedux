@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include <windows.h>
 #include <vector>
 #include <functional>
 #include <time.h>
@@ -78,24 +79,11 @@ public:
             m_bIsBackBufferReady = false;
         }
 
-        time_t curTime = time(NULL);
-        // Clear buffer when script stops responding
-        bool scriptsPaused = false;
-        switch(static_cast<int>(gGameVer)) {
-            case 0: // III
-                scriptsPaused = *(bool*)0x95CD7C;
-                break;
-            case 1: // VC
-                scriptsPaused = *(bool*)0xA10B36;
-                break;
-            case 2: // SA
-                scriptsPaused = *(bool*)0xB7CB49;
-                break;
-            default:
-                break;
-        }
-        
-        if (curTime-m_nLastScriptCallMS > 2 || scriptsPaused) {
+        // Clear the frame as soon as the owning script stops feeding it -
+        // e.g. the game is paused (scripts freeze) or the script ended. The
+        // old check was 2 whole SECONDS plus 32-bit-only memory reads, so the
+        // overlay lingered over the pause menu. 400 ms in real milliseconds.
+        if ((long long)GetTickCount64() - m_nLastScriptCallMS > 400) {
             OnClear();
         }
 
